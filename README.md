@@ -51,7 +51,7 @@ rm -rf node_modules && npm install
 ```bash
 # 1. Clone and install
 git clone <repo-url>
-cd my-claude-code-telegram
+cd my-claude-telegram
 bun install
 
 # 2. Run the setup wizard

@@ -1,17 +1,40 @@
 {
-  "name": "claude-code-telegram",
+  "name": "@arthurbm/claude-telegram",
   "version": "1.0.0",
+  "description": "Get Telegram notifications when Claude Code needs your approval. Respond with interactive buttons or free-text replies.",
+  "author": "Arthur Brito Medeiros",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arthurbm/my-claude-telegram.git"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "telegram",
+    "notifications",
+    "cli",
+    "hooks"
+  ],
   "module": "src/notify.ts",
   "type": "module",
-  "private": true,
   "bin": {
-    "claude-telegram": "./src/notify.ts",
-    "claude-telegram-setup": "./setup.ts"
+    "claude-telegram": "./src/notify.ts"
   },
+  "files": [
+    "src",
+    "setup.ts"
+  ],
   "scripts": {
-    "notify": "bun run src/notify.ts",
-    "setup": "bun run setup.ts",
-    "test": "bun run src/notify.ts --test",
+    "start": "bun run src/notify.ts",
+    "setup": "bun run src/notify.ts --setup",
+    "test:connection": "bun run src/notify.ts --test",
+    "test": "bun test",
+    "build": "bun run scripts/build.ts",
+    "build:current": "bun build --compile --minify --sourcemap ./src/notify.ts --outfile dist/claude-telegram",
+    "release": "bun run scripts/release.ts",
+    "lint": "bun x ultracite check",
+    "lint:fix": "bun x ultracite fix",
     "prepare": "lefthook install"
   },
   "devDependencies": {
@@ -23,5 +46,8 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
   }
 }

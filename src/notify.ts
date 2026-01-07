@@ -1,7 +1,9 @@
 #!/usr/bin/env bun
 
-import { basename } from "node:path";
-import { loadConfig } from "./config";
+import { rm } from "node:fs/promises";
+import { homedir } from "node:os";
+import { basename, dirname, join } from "node:path";
+import { getConfigDir, loadConfig } from "./config";
 import { TelegramClient } from "./telegram";
 import type {
   ClaudeHookInput,
@@ -10,6 +12,94 @@ import type {
   TelegramConfig,
   TelegramMessage,
 } from "./types";
+
+const VERSION = "1.0.0";
+const INSTALL_PATH = "/usr/local/bin/claude-telegram";
+
+function printHelp(): void {
+  console.log(`
+claude-telegram v${VERSION}
+
+Telegram notifications for Claude Code with interactive approval buttons.
+
+Usage:
+  claude-telegram [options]
+
+Options:
+  --setup       Run the setup wizard to configure Telegram bot
+  --test        Test the Telegram connection
+  --uninstall   Remove the binary and configuration
+  --version     Show version number
+  --help        Show this help message
+
+Examples:
+  claude-telegram --setup      # Configure your Telegram bot
+  claude-telegram --test       # Send a test notification
+  claude-telegram              # Normal mode (called by Claude Code hooks)
+
+Documentation: https://github.com/arthurbm/my-claude-telegram
+`);
+}
+
+async function runSetup(): Promise<void> {
+  // Dynamically import setup to avoid circular dependencies
+  const scriptDir = dirname(Bun.main);
+  const setupPath = join(scriptDir, "..", "setup.ts");
+
+  try {
+    // Try to import setup.ts relative to this file
+    await import(setupPath);
+  } catch {
+    // If running from compiled binary, setup functions are embedded
+    const { runSetupWizard } = await import("./setup-wizard");
+    await runSetupWizard();
+  }
+}
+
+async function runUninstall(): Promise<void> {
+  console.log("Uninstalling claude-telegram...\n");
+
+  // Remove config directory
+  const configDir = getConfigDir();
+  try {
+    await rm(configDir, { recursive: true, force: true });
+    console.log(`Removed config: ${configDir}`);
+  } catch {
+    console.log(`Config not found: ${configDir}`);
+  }
+
+  // Remove binary if it exists at standard location
+  try {
+    await rm(INSTALL_PATH, { force: true });
+    console.log(`Removed binary: ${INSTALL_PATH}`);
+  } catch {
+    // Binary might be elsewhere or not installed via curl
+  }
+
+  // Remove hooks from Claude Code settings
+  const claudeSettingsPath = join(homedir(), ".claude", "settings.json");
+  try {
+    const file = Bun.file(claudeSettingsPath);
+    if (await file.exists()) {
+      const settings = (await file.json()) as {
+        hooks?: Record<string, unknown>;
+      };
+      if (settings.hooks) {
+        settings.hooks.Notification = undefined;
+        settings.hooks.Stop = undefined;
+        await Bun.write(claudeSettingsPath, JSON.stringify(settings, null, 2));
+        console.log(`Removed hooks from: ${claudeSettingsPath}`);
+      }
+    }
+  } catch {
+    // Settings file might not exist
+  }
+
+  console.log("\nUninstall complete!");
+  console.log(
+    "If installed via npm/bun, also run: bun remove -g @arthurbm/claude-telegram"
+  );
+}
 
 async function getGitBranch(cwd: string): Promise<string | undefined> {
   try {
@@ -74,6 +164,30 @@ async function readStdinJson(): Promise<ClaudeHookInput | null> {
 
 async function main() {
   const args = process.argv.slice(2);
+
+  // Handle help and version first (no config needed)
+  if (args.includes("--help") || args.includes("-h")) {
+    printHelp();
+    process.exit(0);
+  }
+
+  if (args.includes("--version") || args.includes("-v")) {
+    console.log(VERSION);
+    process.exit(0);
+  }
+
+  // Handle setup (no config needed)
+  if (args.includes("--setup")) {
+    await runSetup();
+    process.exit(0);
+  }
+
+  // Handle uninstall (no config needed)
+  if (args.includes("--uninstall")) {
+    await runUninstall();
+    process.exit(0);
+  }
+
   const isTest = args.includes("--test");
   const isStopEvent = args.includes("--event=stop");
 
