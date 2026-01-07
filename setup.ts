@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 
-import { saveConfig, getConfigPath, configExists } from "./src/config";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { configExists, getConfigPath, saveConfig } from "./src/config";
 import { TelegramClient } from "./src/telegram";
-import { homedir } from "os";
-import { join } from "path";
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), ".claude", "settings.json");
 
@@ -50,8 +50,10 @@ To create a Telegram bot:
 
   const token = await promptSecret("Paste your bot token: ");
 
-  if (!token || !token.includes(":")) {
-    throw new Error("Invalid token format. Should be like: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz");
+  if (!token?.includes(":")) {
+    throw new Error(
+      "Invalid token format. Should be like: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+    );
   }
 
   return token;
@@ -68,7 +70,7 @@ To get your Chat ID:
   await prompt("Press Enter after sending a message to your bot...");
 
   // Try to get chat ID from recent messages
-  const client = new TelegramClient({
+  const _client = new TelegramClient({
     botToken,
     chatId: "0",
     timeout: 10,
@@ -81,14 +83,21 @@ To get your Chat ID:
     const response = await fetch(
       `https://api.telegram.org/bot${botToken}/getUpdates`
     );
-    const data = await response.json();
+    const data = (await response.json()) as {
+      ok: boolean;
+      result?: Array<{
+        message?: { chat?: { id?: number } };
+        callback_query?: { message?: { chat?: { id?: number } } };
+      }>;
+    };
 
-    if (data.ok && data.result?.length > 0) {
+    if (data.ok && data.result && data.result.length > 0) {
       // Get the most recent message's chat ID
-      const lastUpdate = data.result[data.result.length - 1];
-      const chatId =
-        lastUpdate.message?.chat?.id?.toString() ??
-        lastUpdate.callback_query?.message?.chat?.id?.toString();
+      const lastUpdate = data.result.at(-1);
+      const chatId = lastUpdate
+        ? (lastUpdate.message?.chat?.id?.toString() ??
+          lastUpdate.callback_query?.message?.chat?.id?.toString())
+        : undefined;
 
       if (chatId) {
         console.log(`Found chat ID: ${chatId}`);
@@ -107,7 +116,10 @@ To get your Chat ID:
   }
 }
 
-async function testConnection(botToken: string, chatId: string): Promise<boolean> {
+async function testConnection(
+  botToken: string,
+  chatId: string
+): Promise<boolean> {
   console.log("\nTesting connection...");
 
   const client = new TelegramClient({
@@ -179,7 +191,7 @@ async function installHooks(): Promise<boolean> {
     };
 
     // Write back
-    const { mkdir } = await import("fs/promises");
+    const { mkdir } = await import("node:fs/promises");
     await mkdir(join(homedir(), ".claude"), { recursive: true });
     await Bun.write(CLAUDE_SETTINGS_PATH, JSON.stringify(settings, null, 2));
 

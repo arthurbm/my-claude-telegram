@@ -11,10 +11,15 @@
   "scripts": {
     "notify": "bun run src/notify.ts",
     "setup": "bun run setup.ts",
-    "test": "bun run src/notify.ts --test"
+    "test": "bun run src/notify.ts --test",
+    "prepare": "lefthook install"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@biomejs/biome": "2.3.11",
+    "@types/bun": "latest",
+    "husky": "^9.1.7",
+    "lefthook": "^2.0.13",
+    "ultracite": "7.0.8"
   },
   "peerDependencies": {
     "typescript": "^5"

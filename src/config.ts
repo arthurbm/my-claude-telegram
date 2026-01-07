@@ -1,5 +1,5 @@
-import { homedir } from "os";
-import { join } from "path";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { TelegramConfig } from "./types";
 
 const CONFIG_DIR = join(homedir(), ".claude-telegram");
@@ -30,7 +30,7 @@ export async function loadConfig(): Promise<TelegramConfig> {
 
   const stored: StoredConfig = await file.json();
 
-  if (!stored.botToken || !stored.chatId) {
+  if (!(stored.botToken && stored.chatId)) {
     throw new Error(
       "Invalid config: missing botToken or chatId.\nRun 'bun run setup.ts' to reconfigure."
     );
@@ -45,7 +45,7 @@ export async function loadConfig(): Promise<TelegramConfig> {
 }
 
 export async function saveConfig(config: StoredConfig): Promise<void> {
-  const { mkdir } = await import("fs/promises");
+  const { mkdir } = await import("node:fs/promises");
   await mkdir(CONFIG_DIR, { recursive: true });
   await Bun.write(CONFIG_FILE, JSON.stringify(config, null, 2));
 }

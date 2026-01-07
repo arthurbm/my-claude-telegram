@@ -1,9 +1,15 @@
 #!/usr/bin/env bun
 
+import { basename } from "node:path";
 import { loadConfig } from "./config";
 import { TelegramClient } from "./telegram";
-import type { ClaudeHookInput, ClaudeHookOutput, NotificationContext } from "./types";
-import { basename } from "path";
+import type {
+  ClaudeHookInput,
+  ClaudeHookOutput,
+  NotificationContext,
+  TelegramConfig,
+  TelegramMessage,
+} from "./types";
 
 async function getGitBranch(cwd: string): Promise<string | undefined> {
   try {
@@ -20,13 +26,13 @@ async function getGitBranch(cwd: string): Promise<string | undefined> {
 }
 
 function formatNotificationMessage(context: NotificationContext): string {
-  let msg = `<b>Claude Code</b>\n\n`;
+  let msg = "<b>Claude Code</b>\n\n";
 
   msg += `<b>Project:</b> ${escapeHtml(context.projectName)}`;
   if (context.gitBranch) {
     msg += ` (<code>${escapeHtml(context.gitBranch)}</code>)`;
   }
-  msg += `\n`;
+  msg += "\n";
 
   if (context.toolName) {
     msg += `<b>Tool:</b> ${escapeHtml(context.toolName)}\n`;
@@ -39,7 +45,7 @@ function formatNotificationMessage(context: NotificationContext): string {
     const maxLen = 2000;
     let messageText = context.message;
     if (messageText.length > maxLen) {
-      messageText = messageText.substring(0, maxLen) + "...";
+      messageText = `${messageText.substring(0, maxLen)}...`;
     }
     msg += `<pre>${escapeHtml(messageText)}</pre>`;
   }
@@ -72,7 +78,7 @@ async function main() {
   const isStopEvent = args.includes("--event=stop");
 
   // Load config
-  let config;
+  let config: TelegramConfig;
   try {
     config = await loadConfig();
   } catch (error) {
@@ -135,9 +141,12 @@ async function main() {
     const formattedMessage = formatNotificationMessage(context);
 
     // Send notification
-    let sentMessage;
+    let sentMessage: TelegramMessage;
     if (isPermissionPrompt) {
-      sentMessage = await client.sendNotificationWithButtons(formattedMessage, true);
+      sentMessage = await client.sendNotificationWithButtons(
+        formattedMessage,
+        true
+      );
     } else {
       // For non-permission notifications, just notify without blocking
       await client.sendSimpleNotification(formattedMessage);
@@ -176,14 +185,23 @@ async function main() {
 
       case "timeout":
         // Timeout - deny by default for safety
-        console.error("Timeout waiting for response via Telegram. Action denied for safety.");
+        console.error(
+          "Timeout waiting for response via Telegram. Action denied for safety."
+        );
         process.exit(2);
         break;
+
+      default:
+        // Handle any unexpected response type
+        console.error("Unexpected response type");
+        process.exit(1);
     }
   }
 
   // No input provided
-  console.error("No input received. This script should be called by Claude Code hooks.");
+  console.error(
+    "No input received. This script should be called by Claude Code hooks."
+  );
   process.exit(1);
 }
 

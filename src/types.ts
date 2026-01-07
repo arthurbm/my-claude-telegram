@@ -9,7 +9,11 @@ export interface ClaudeHookInput {
   hook_event_name: string;
   // Notification-specific fields
   message?: string;
-  notification_type?: "permission_prompt" | "idle_prompt" | "auth_success" | "elicitation_dialog";
+  notification_type?:
+    | "permission_prompt"
+    | "idle_prompt"
+    | "auth_success"
+    | "elicitation_dialog";
   // Tool-related fields
   tool_name?: string;
   tool_input?: Record<string, unknown>;
